@@ -1,75 +1,49 @@
+/* readers.c - readers and writers with two semaphores.
+ * Many readers may read together; a writer must be alone.
+ * Build: gcc -Wall -pthread -o readers readers.c
+ */
 #include <stdio.h>
-#include <pthread.h>
 #include <unistd.h>
-
-pthread_mutex_t rlock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t wlock = PTHREAD_MUTEX_INITIALIZER;
-
-int readers = 0;
-int shared_data = 100;
-
+#include <pthread.h>
+#include <semaphore.h>
+#define READERS 3
+#define WRITERS 2
+int value = 0; /* the shared data */
+int readers = 0; /* how many are reading now */
+sem_t rlock; /* protects the counter readers */
+sem_t room; /* 1 = the room is free for a writer */
 void *reader(void *arg) {
-    int id = *(int *)arg;
-
-    pthread_mutex_lock(&rlock);
-
-    readers++;
-
-    if (readers == 1) {
-        pthread_mutex_lock(&wlock);
-    }
-
-    pthread_mutex_unlock(&rlock);
-
-    printf("Reader %d: reading value %d\n", id, shared_data);
-    sleep(1);
-    printf("Reader %d: finished reading\n", id);
-
-    pthread_mutex_lock(&rlock);
-
-    readers--;
-
-    if (readers == 0) {
-        pthread_mutex_unlock(&wlock);
-    }
-
-    pthread_mutex_unlock(&rlock);
-
+    long id = (long)arg;
+    sem_wait(&rlock);
+    if (++readers == 1) /* the first reader in locks out the writers */
+    sem_wait(&room);
+    sem_post(&rlock);
+    printf("reader %ld reads %d (readers inside: %d)\n", id, value, readers);
+    usleep(200000);
+    sem_wait(&rlock);
+    if (--readers == 0) /* the last reader out lets the writers in */
+    sem_post(&room);
+    sem_post(&rlock);
     return NULL;
 }
-
 void *writer(void *arg) {
-    int id = *(int *)arg;
-
-    pthread_mutex_lock(&wlock);
-
-    shared_data += 10;
-
-    printf("Writer %d: updated value to %d\n", id, shared_data);
-
-    sleep(1);
-
-    pthread_mutex_unlock(&wlock);
-
+    long id = (long)arg;
+    sem_wait(&room); /* alone in the room */
+    value += 10;
+    printf("writer %ld writes %d (alone)\n", id, value);
+    usleep(200000);
+    sem_post(&room);
     return NULL;
 }
-
 int main(void) {
-    pthread_t r1, r2, r3, w1;
-    int id1 = 1, id2 = 2, id3 = 3, wid = 1;
-
-    pthread_create(&r1, NULL, reader, &id1);
-    pthread_create(&r2, NULL, reader, &id2);
-    pthread_create(&w1, NULL, writer, &wid);
-    pthread_create(&r3, NULL, reader, &id3);
-
-    pthread_join(r1, NULL);
-    pthread_join(r2, NULL);
-    pthread_join(r3, NULL);
-    pthread_join(w1, NULL);
-
-    pthread_mutex_destroy(&rlock);
-    pthread_mutex_destroy(&wlock);
-
+    sem_init(&rlock, 0, 1);
+    sem_init(&room, 0, 1);
+    pthread_t r[READERS], w[WRITERS];
+    pthread_create(&w[0], NULL, writer, (void *)1L);
+    for (long i = 0; i < READERS; i++)
+    pthread_create(&r[i], NULL, reader, (void *)(i + 1));
+    pthread_create(&w[1], NULL, writer, (void *)2L);
+    for (int i = 0; i < READERS; i++) pthread_join(r[i], NULL);
+    for (int i = 0; i < WRITERS; i++) pthread_join(w[i], NULL);
     return 0;
 }
