@@ -1,0 +1,59 @@
+$ strace -c ls -l > /dev/null
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ------------------
+  0.00    0.000000           0        10           listxattr
+  0.00    0.000000           0         3           fcntl
+  0.00    0.000000           0         6         4 ioctl
+  0.00    0.000000           0         2         2 statfs
+  0.00    0.000000           0         2         2 faccessat
+  0.00    0.000000           0        31         1 openat
+  0.00    0.000000           0        34           close
+  0.00    0.000000           0        34           getdents64
+  0.00    0.000000           0         4           lseek
+  0.00    0.000000           0        19           read
+  0.00    0.000000           0         1           write
+  0.00    0.000000           0         1           ppoll
+  0.00    0.000000           0         1           readlinkat
+  0.00    0.000000           0         4           newfstatat
+  0.00    0.000000           0        29           fstat
+  0.00    0.000000           0         1           set_tid_address
+  0.00    0.000000           0         1           set_robust_list
+  0.00    0.000000           0         1           sched_getaffinity
+  0.00    0.000000           0         3           sigaltstack
+  0.00    0.000000           0         9           rt_sigaction
+  0.00    0.000000           0         1           prctl
+  0.00    0.000000           0         1           gettid
+  0.00    0.000000           0         4           socket
+  0.00    0.000000           0         4         4 connect
+  0.00    0.000000           0         3           brk
+  0.00    0.000000           0        12           munmap
+  0.00    0.000000           0         1           execve
+  0.00    0.000000           0        22           mmap
+  0.00    0.000000           0        13           mprotect
+  0.00    0.000000           0         2           prlimit64
+  0.00    0.000000           0         1           getrandom
+  0.00    0.000000           0        12           statx
+  0.00    0.000000           0         1           rseq
+------ ----------- ----------- --------- --------- ------------------
+100.00    0.000000           0       273        13 total
+$ strace -c -e trace=openat ls -l > /dev/null
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+  0.00    0.000000           0        31         1 openat
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.000000           0        31         1 total
+$ strace -c -e trace=write ./syscalls > out.txt
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+  0.00    0.000000           0         2           write
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.000000           0         2           total
+$ strace -c -e trace=write ./syscalls
+open returned descriptor 3
+write sent 14 bytes
+read got 14 bytes: hello, kernel
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+  0.00    0.000000           0         4           write
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.000000           0         4           total

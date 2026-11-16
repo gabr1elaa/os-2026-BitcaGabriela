@@ -1,0 +1,3 @@
+open returned descriptor 3
+write sent 14 bytes
+read got 14 bytes: hello, kernel
